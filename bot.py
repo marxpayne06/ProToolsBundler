@@ -9,7 +9,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 # ============================================================================
 # CONFIGURATION (Paste your token below)
 # ============================================================================
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE" 
+BOT_TOKEN = "8771123401:AAHhv3aZO8WYmzDiSdbE4YPj_WvdKbEPz00" 
 
 # Configure logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
