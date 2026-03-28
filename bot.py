@@ -327,7 +327,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
         await update.message.reply_text(text, parse_mode='Markdown', reply_markup=markup)
     elif update.callback_query:
-        await update.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=markup)
+        await update.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=markup)
 
 # ============================================================================
 # BUTTON HANDLER (routes all callback queries)
