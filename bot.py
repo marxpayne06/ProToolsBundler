@@ -3,7 +3,7 @@ from telebot import TeleBot, types
 
 # Replace 'YOUR_BOT_TOKEN_HERE' with your actual token 
 # or set it in Render's environment variables as BOT_TOKEN
-TOKEN = os.getenv('BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
+TOKEN = os.getenv('BOT_TOKEN', '8771123401:AAHhv3aZO8WYmzDiSdbE4YPj_WvdKbEPz00')
 bot = TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
